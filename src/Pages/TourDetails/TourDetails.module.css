@@ -239,6 +239,7 @@ nav .menu i{
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
+    margin-bottom: 50px;
 }
 .details__about{
     width: 64%;
@@ -371,10 +372,8 @@ nav .menu i{
 .details__about .main-content > h5{
     font-size: 18px;
     font-weight: 400;
-    text-align: center;
-    height: 600px;
-    line-height: 30;
     color: rgba(6, 12, 19, 0.6);
+    margin-bottom: 15px;
 }
 .details__about .main-content .main-image img{
     width: 100%;
@@ -474,23 +473,23 @@ nav .menu i{
     width: 34%;
     height: 440px;
 }
-.details__book form{
+.details__book .booking__form__style{
     background-color: rgba(255, 255, 255, 0.32);
     padding: 20px;
     border-radius: 12px;
     position: relative;
     margin-bottom: 20px;
 }
-.details__book form::after{
+.details__book .booking__form__style::after{
     position: absolute;
     content: "";
     left: 20px;
-    top: 70%;
+    top: 67%;
     width: calc(100% - 40px);
     height: 1px;
     background-color: rgba(6, 12, 19, 0.32);
 }
-.details__book form label{
+.details__book .booking__form__style label{
     font-size: 14px;
     font-weight: 700;
     color:rgba(6, 12, 19, 0.6);
@@ -614,7 +613,8 @@ select {
     cursor: pointer;
     width: 100%;
     border-radius: 12px;
-  height: 50px;
+    height: 65px;
+    font-size: 20px;
   }
   /* Remove IE arrow */
   select::-ms-expand {
@@ -645,7 +645,7 @@ select {
     color: #f39c12;
   }
 
-.details__book .form input {
+.details__book .booking__form__style input {
   width: 100%;
   padding: 20px;
   height: 24px;
@@ -672,6 +672,7 @@ select {
     color: white;
     border-radius: 12px;
     border: none;
+    cursor: pointer;
 }
 .details__book .by h4{
     font-size: 18px;

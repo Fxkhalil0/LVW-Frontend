@@ -23,13 +23,17 @@ import axios from 'axios';
 import Modalstyle from './EditModal.module.css';
 import UserCoverModalStyle from './UserCoverModal.module.css'
 import UserProfileModalStyle from './UserProfileModal.module.css'
+import Card from '../Card/Card';
+import SuccessandErrorModals from '../SuccessandErorrModals/SuccessandErrorModals'
+import Navbar from '../Navbar/Navbar'
+
+
 
 function UserProfile() {
   //UserData
   const [userData, setUserData] = useState("")
   const userRole = localStorage.getItem("role")
-  const userId = localStorage.getItem("id");
-  console.log("User ID from localStorage:", userId);
+  const userId = JSON.parse(localStorage.getItem("id"));
 
 
 
@@ -45,6 +49,19 @@ function UserProfile() {
   const [data, setData] = useState([]);
   const [country, setCountry] = useState([]);
   const [city, setCity] = useState([]);
+  //to show updated data immediately
+  const [updateUserData, setUpdateUserData] = useState(userData)
+  const [booked, setBooked] = useState([])
+
+  //successModal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSuccessProfileModal, setShowSuccessProfileModal] = useState(false);
+  const [showSuccessCoverModal, setShowSuccessCoverModal] = useState(false);
+
+  //Error
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showErrorCoverModal, setShowErrorCoverModal] = useState(false);
+  const [showErrorProfileModal, setShowErrorProfileModal] = useState(false)
 
 
   const formatDate = (dateString) => {
@@ -59,26 +76,27 @@ function UserProfile() {
   useEffect(() => {
     axios.post("http://localhost:5000/user/getOneUser", { id: userId })
       .then((res) => {
-        console.log(res.data);
         setUserData(res.data.data);
       })
       .catch((error) => {
         console.error("Error fetching user data:", error);
       });
-      axios.get("http://localhost:5000/user/getBooks",{id:userId}).then((res)=>{
-        console.log(res)
+    axios.get("http://localhost:5000/user/getBooks", {
+      params: { id: localStorage.getItem("id") }
+    })
+      .then((res) => {
+        setBooked(res.data)
       })
+
   }, []);
 
   useEffect(() => {
     axios.get("https://pkgstore.datahub.io/core/world-cities/world-cities_json/data/5b3dd46ad10990bca47b04b4739a02ba/world-cities_json.json")
       .then(res => {
         setData(res.data);
-        console.log(res.data)
         let countries = [...new Set(res.data.map(item => item.country))];
         countries.sort();
         setCountry(countries);
-        console.log(countries)
       })
       .catch(err => console.log(err))
   }, []);
@@ -89,28 +107,35 @@ function UserProfile() {
   };
 
   const updateUserProfile = () => {
-    console.log(editName, userId, editDescription, editPhone, editAddress, editCity)
-    axios.put(`http://localhost:5000/user/editInfo`, {
-      name: editName,
-      id: userId,
-      description: editDescription,
-      phone: editPhone,
-      address: editAddress,
-      city: editCity,
-    })
-      .then((res) => {
-
-        console.log("User data updated successfully:", res.data);
-        setShowEditModal(false);
-        axios.post("http://localhost:5000/user/getOneUser", { id: userId })
-          .then((res) => {
-            console.log(res.data);
-            setUserData(res.data.data);
-          })
+    if (!editName || !editPhone || !editDescription || !editAddress || !editCity) {
+      setShowErrorModal(true); // Show the error modal
+      setTimeout(() => {
+        setShowErrorModal(false); // Hide the error modal after 3 seconds
+      }, 3000);
+    } else {
+      axios.put(`http://localhost:5000/user/editInfo`, {
+        name: editName,
+        id: userId,
+        description: editDescription,
+        phone: editPhone,
+        address: editAddress,
+        city: editCity,
       })
-      .catch((error) => {
-        console.error("Error updating user data:", error);
-      });
+        .then((res) => {
+          setShowEditModal(false);
+          axios.post("http://localhost:5000/user/getOneUser", { id: userId })
+            .then((res) => {
+              setUserData(res.data.data);
+              setShowSuccessModal(true);
+              setTimeout(() => {
+                setShowSuccessModal(false);
+              }, 3000);
+            })
+        })
+        .catch((error) => {
+          console.error("Error updating user data:", error);
+        });
+    }
   };
 
   //edit cover Image
@@ -131,24 +156,28 @@ function UserProfile() {
   const handleCoverImageSaveChanges = () => {
 
     if (!selectedCoverImage) {
-      console.error("No cover image selected.");
+      setShowErrorCoverModal(true);
+      setTimeout(() => {
+        setShowErrorCoverModal(false);
+      }, 3000);
       return;
     }
 
     const formData = new FormData();
     formData.append("coverImg", selectedCoverImage);
-    formData.append("id", JSON.parse(userId))
+    formData.append("id", userId)
 
-    console.log("Selected cover image:", selectedCoverImage);
-    console.log("FormData object:", formData);
+ 
 
     axios.put("http://localhost:5000/user/editCoverImage", formData).then((response) => {
-      console.log("Cover image updated successfully:", response.data);
       setShowCoverModal(false)
       axios.post("http://localhost:5000/user/getOneUser", { id: userId })
         .then((res) => {
-          console.log(res.data);
           setUserData(res.data.data);
+          setShowSuccessCoverModal(true);
+          setTimeout(() => {
+            setShowSuccessCoverModal(false);
+          }, 3000);
         })
         .catch((error) => {
           console.error("Error fetching user data:", error);
@@ -177,31 +206,33 @@ function UserProfile() {
   const handleProfileImageSaveChanges = () => {
 
     if (!selectedProfileImage) {
-      console.error("No cover image selected.");
+      setShowErrorProfileModal(true);
+      setTimeout(() => {
+        setShowErrorProfileModal(false);
+      }, 3000);
       return;
     }
 
     const formData = new FormData();
     formData.append("img", selectedProfileImage);
-    formData.append("id", JSON.parse(userId))
+    formData.append("id", userId)
 
-    console.log("Selected cover image:", selectedProfileImage);
-    console.log("FormData object:", formData);
+
 
     axios.put("http://localhost:5000/user/editImage", formData).then((response) => {
-      console.log("Cover image updated successfully:", response.data);
       setShowProfileModal(false)
 
       axios.post("http://localhost:5000/user/getOneUser", { id: userId })
         .then((res) => {
-          console.log(res.data);
           setUserData(res.data.data);
+          setShowSuccessProfileModal(true);
+          setTimeout(() => {
+            setShowSuccessProfileModal(false);
+          }, 3000);
         })
         .catch((error) => {
           console.error("Error fetching user data:", error);
         });
-      
-      
     }).catch((error) => {
       console.error("Error updating cover image:", error);
     });
@@ -211,82 +242,8 @@ function UserProfile() {
 
   return (
     <div>
-      <nav>
-        <div className={style["container"]}>
-          <div className={style["nav__content"]}>
-            <div className={style["nav__right"]}>
-              <div className={style["nav__logo"]}>
-                <img src={logo} alt="logo" />
-              </div>
-              <div className={style["nav__search"]}>
-                <input type="text" placeholder="Tour name or location..." />
-              </div>
-              <ul className={style["nav__links"]}>
-                <li><a>Home</a></li>
-                <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                </li>
-                <li><a href="#">Our Mission</a></li>
-                <li><a href="#">Contact Us</a></li>
-              </ul>
-            </div>
-            <div className={style["menu"]}>
-              <i onClick={() => {
-                if (menu == false) {
-                  setMenu(true)
-                  console.log(true)
-                }
-                else {
-                  setMenu(false)
-                  console.log(false)
-                }
+      <Navbar />
 
-              }} className="fas fa-bars" />
-              {
-                menu == true &&
-                <div className={style["drobdown"]}>
-                  <ul className={style["nav__link"]} id="drobDown">
-                    <li><a href="#">Home</a></li>
-                    <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                    </li>
-                    <li><a href="#">Our Mission</a></li>
-                    <li><a href="#">Contact Us</a></li>
-                  </ul>
-                </div>
-              }
-            </div>
-            <div className={style["nav__left"]}>
-              <div className={style["nav__langs"]}>
-                {
-                  lang == "english" &&
-                  <a><img src={United_Kingdom} alt='' /> English</a>
-                }
-                {
-                  lang == "arabic" &&
-                  <a href="#"><img src={egypt} alt='' /> العربية</a>
-                }
-                {
-                  lang == "italiano" &&
-                  <a href="#"><img src={United_Kingdom} alt='' /> Italiano</a>
-                }
-                <ul>
-                  <li onClick={() => {
-                    setLang("english")
-                  }}><a href="#"><img src={United_Kingdom} alt='' /> English</a></li>
-                  <li onClick={() => {
-                    setLang("arabic")
-                  }}><a href="#"><img src={egypt} alt='' /> العربية</a></li>
-                  <li onClick={() => {
-                    setLang("italiano")
-                  }}><a href="#"><img src={United_Kingdom} alt='' /> Italiano</a></li>
-                </ul>
-              </div>
-              <div className={style["nav__join"]}>
-                <a href="#">Join Us Now</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
       <div className={style["path"]}>
         <div className={style["container"]}>
           <div className={style["path__content"]}>
@@ -306,6 +263,11 @@ function UserProfile() {
               style={{ color: '#000000', cursor: 'pointer' }}
               onClick={() => setShowCoverModal(true)}
             ></i>
+            {/* Success Modal */}
+            {showSuccessCoverModal && <SuccessandErrorModals message={"Your Cover Edited Successfully"} success={true} />}
+            {/* Error Modal */}
+            {showErrorCoverModal && <SuccessandErrorModals message={"No Cover image selected"} success={false} />}
+
             {showCoverModal && (
               <div className={UserCoverModalStyle['usercover-modal__overlay']}>
                 <div className={UserCoverModalStyle['usercover-modal__content']}>
@@ -341,8 +303,13 @@ function UserProfile() {
             <i
               className="fa-solid fa-plus"
               style={{ color: '#000000', cursor: 'pointer' }}
-            onClick={() => setShowProfileModal(true)}
+              onClick={() => setShowProfileModal(true)}
             ></i>
+            {/* Success Modal */}
+            {showSuccessProfileModal && <SuccessandErrorModals message={"Your Picture Edited Successfully"} success={true} />}
+            {/* Error Modal */}
+            {showErrorProfileModal && <SuccessandErrorModals message={"No Profile image selected"} success={false} />}
+
             {showProfileModal && (
               <div className={UserProfileModalStyle['userprofile-modal__overlay']}>
                 <div className={UserProfileModalStyle['userprofile-modal__content']}>
@@ -381,6 +348,10 @@ function UserProfile() {
               </div>
               <div className={style['edit__button']}>
                 <a href="#" onClick={() => setShowEditModal(true)}>Edit Profile</a>
+                {/* Success Modal */}
+                {showSuccessModal && <SuccessandErrorModals message={"Your Information Edited Successfully"} success={true} />}
+                {/* Error Modal */}
+                {showErrorModal && <SuccessandErrorModals message={"Please Fill All Fields."} success={false} />}
 
                 {/* Modal */}
                 {showEditModal && (
@@ -444,6 +415,7 @@ function UserProfile() {
                         <button onClick={() => setShowEditModal(false)}>Cancel</button>
                         <button onClick={updateUserProfile}>Save Changes</button>
                       </div>
+
                     </div>
                   </div>
                 )}
@@ -464,13 +436,13 @@ function UserProfile() {
                   setTap("tours")
                 }}>{userData?.name}’s Tours</a>
               </div>
-              <div className={style["text"]} id="text">
+              <div style={{
+                display: tap === "tours" ? "flex" : "",
+                justifyContent: tap === "tours" ? "space-between" : ""
+              }} className={style["text"]} id="text">
                 {
                   tap === "about" &&
                   <>
-                    {/* <p>Hi, I'm Sophie, a passionate virtual tour guide with extensive experience in providing immersive and engaging virtual tours. </p>
-                  <p>Originally from the UK I moved out to Egypt 24yrs ago falling in love with the history and the culture I have never looked back!</p>
-                  <p>I have a deep love for history, culture, and travel, and I enjoy sharing my knowledge with people from all around the world. My goal is to transport you to fascinating destinations and make you feel like you're right there, experiencing the sights, sounds, and stories.</p> */}
                     <h4>Description</h4>
                     {userData?.description ? (
                       <p>{userData.description}</p>
@@ -478,9 +450,6 @@ function UserProfile() {
                       <p style={{ margin: "10px 0" }}>You don't have description yet!</p>
                     )}
                     <h4>Phone</h4>
-                    {/* <h5>Bachelor's Degree in History</h5>
-                    <p>XYZ University, New York </p>
-                    <p>(2011 - 2015)</p> */}
                     {userData?.phone ? (
                       <p>{userData.phone}</p>
                     ) : (
@@ -488,12 +457,6 @@ function UserProfile() {
                     )}
 
                     <h4>Address</h4>
-                    {/* <h5>Virtual Tour Guide</h5>
-                    <p>Wanderlust Tours</p>
-                    <p>(2018 - Now)</p>
-                    <h5>Tour Guide</h5>
-                    <p>City Explorers Company</p>
-                    <p>(2016 - 2018)</p> */}
                     {userData?.address ? (
                       <p>{userData?.city},{userData?.address}</p>
                     ) : (
@@ -506,10 +469,10 @@ function UserProfile() {
                 {
                   tap == "tours" &&
                   <>
-                    {userData?.tours.length > 0 ? (
-                      userData.tours.map((tour) => (
-                        <p key={tour._id}>{tour.title}</p> // Assuming the tour object has a title field
-                      ))
+                    {booked?.length > 0 ? (
+                      booked.map((book) => {
+                        return <Card key={book._id} data={book.tour} review={true} id={book._id} isReview={book.isReviewed} /> // Assuming the tour object has a title field
+                      })
                     ) : (
                       <p style={{ margin: "10px 0" }}>You don't have any tour yet!</p>
                     )}
@@ -517,16 +480,6 @@ function UserProfile() {
                 }
               </div>
             </div>
-            {/* <div className={style["languages"]}>
-              <h3>Languages</h3>
-              <div className={style["langs"]}>
-                <a href="#"><img src={rounded} alt='' /> English</a>
-                <a href="#"><img src={egypt1} alt='' /> Arabic</a>
-              </div>
-              <h3>Address</h3>
-              <a href="#"><img src={group66} alt='' /> Cairo, Egypt</a>
-              <p>Joined since {formatDate(userData?.joinedAt)}</p>
-            </div> */}
           </div>
         </div>
       </div>

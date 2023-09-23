@@ -19,9 +19,17 @@ import icon from "../../assets/icons.svg"
 import UK from '../../assets/United Kingdom (GB).svg'
 import LR from '../../assets/Line Rounded.svg'
 import icon1 from '../../assets/icons (1).svg'
-import { json, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, json, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios'
 import Card from '../Card/Card';
+import { useParams } from 'react-router-dom';
+import SuccessandErrorModals from '../SuccessandErorrModals/SuccessandErrorModals';
+import Navbar from '../Navbar/Navbar'
+import StreamingSection from '../StreamingSection/StreamingSection'
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+
+
 function TourDetails() {
 
   const [lang, setLang] = useState("english")
@@ -35,7 +43,22 @@ function TourDetails() {
   const [bookedNumber, setBookedNumber] = useState()
   const [bookedLang, setBookedLang] = useState()
   const [bookedHours, setBookedHours] = useState()
+  const [showSuccessBookModal, setShowSuccessBookModal] = useState(false)
+  const [showErrorBookModal, setShowErrorBookModal] = useState(false)
+  const [showErrorMsg, setErrorMsg] = useState("")
+  const [isLive, setIsLive] = useState(false)
+  const [liveTourId, setLiveTourId] = useState([]);
+  const [isBookingDisabled, setIsBookingDisabled] = useState(false);
+  const [userData, setUserData] = useState("")
+
+
+
   const location = useLocation();
+  const navigate = useNavigate();
+
+
+  const { num } = useParams();
+
 
   function hours(number) {
     const updatedHours = [];
@@ -58,25 +81,64 @@ function TourDetails() {
     setLanguage(updatedLanguages)
   }
   useEffect(() => {
-    console.log(location.state)
-    axios.get("http://localhost:5000/user/oneTour", { params: { id: location.state } }).then((res) => {
-      console.log(res.data)
-      setTour(res.data)
-      hours(res.data.hours)
-      languages(res.data)
-    })
+
+    if (location.state) {
+      axios.get("http://localhost:5000/user/oneTour", { params: { id: location.state } }).then((res) => {
+        setTour(res.data)
+        hours(res.data.hours)
+        languages(res.data)
+      })
+    } else if (num) {
+      axios.get("http://localhost:5000/user/oneTour", { params: { id: num } }).then((res) => {
+        setTour(res.data)
+        hours(res.data.hours)
+        languages(res.data)
+      })
+    }
 
     axios.get("http://localhost:5000/user/public").then((res) => {
-      console.log(res.data)
       setPublicTours(res.data)
     })
 
+
     axios.get("http://localhost:5000/user/vip").then((res) => {
-      console.log(res.data)
       setVip(res.data)
     })
 
+    axios.get("http://localhost:5000/user/liveTours").then((res) => {
+      for (let i = 0; i < res.data.data.length; i++) {
+        if (res.data.data[i]._id === tour?._id) {
+          setIsLive(true)
+        }
+      }
+    })
+    axios.get("http://localhost:5000/user/liveTours")
+      .then((res) => {
+        const liveTourData = res.data.data;
+        const liveId = liveTourData.map((tour) => tour?._id);
+        setLiveTourId(liveId);
+      })
+      .catch((error) => {
+        console.error("Error fetching live tours:", error);
+      });
+    axios.post("http://localhost:5000/user/getOneUser", { id: JSON.parse(localStorage.getItem("id")) })
+      .then((res) => {
+        setUserData(res.data.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching user data:", error);
+      });
   }, [location.state])
+
+  useEffect(() => {
+    if (liveTourId.includes(tour?._id)) {
+      setIsLive(true);
+    } else {
+      setIsLive(false);
+    }
+  }, [liveTourId, tour]);
+
+
 
   const fullStars = Math.floor(tour?.avgRate || 0);
   const hasHalfStar = (tour?.avgRate || 0) - fullStars >= 0.5;
@@ -91,101 +153,104 @@ function TourDetails() {
       return <i key={index} className="fa-regular fa-star" style={{ color: '#fe2629' }} />;
     }
   });
+
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const cardElement = elements.getElement('card')
+    if (!stripe || !elements || !cardElement) {
+      // Stripe.js has not loaded yet, wait for it to load.
+      return;
+    }
+
+    try {
+      // Fetch the client secret from your server
+      const response = await axios.post("http://localhost:5000/getClientSecret", {
+        amount: bookedHours * bookedNumber * tour?.price * 100, // Pass the payment amount and convert to cents
+        metadata: {
+          userId: JSON.parse(localStorage.getItem('id')),
+          userName: userData?.name, // Replace with the actual user name
+          userEmail: userData?.email, // Replace with the actual user email
+        },
+      });
+
+      const clientSecret = response.data.clientSecret;
+
+      // Confirm the payment with Stripe using the retrieved client secret
+      const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          type: 'card',
+          card: cardElement,
+        },
+      });
+
+      if (error) {
+        // Handle payment error
+        console.error('Payment failed:', error.message);
+      } else if (paymentIntent) {
+        // Payment succeeded, you can now access payment data
+        const paymentMethod = paymentIntent.payment_method;
+        const cardDetails = paymentMethod.card;
+        if (paymentMethod && cardDetails && cardDetails.last4) {
+          console.log('Last 4 digits:', cardDetails.last4);
+        }
+        const bookingData = {
+          user: JSON.parse(localStorage.getItem('id')),
+          tour: tour._id,
+          hours: bookedHours,
+          language: bookedLang,
+          num: bookedNumber,
+          price: bookedHours * bookedNumber * tour?.price,
+        };
+
+        const response = await axios.post('http://localhost:5000/user/bookTour', bookingData);
+
+        if (response.data.status === 200) {
+          // Handle success logic here, e.g., show a success message and navigate to a confirmation page
+          setShowSuccessBookModal(true);
+          setIsBookingDisabled(true); // Disable the button
+          setTimeout(() => {
+            setShowSuccessBookModal(false);
+          }, 3000);
+        } else if(response.status === 500){
+          setShowErrorBookModal(true);
+          setErrorMsg(response.data.message);
+          setTimeout(() => {
+            setShowErrorBookModal(false);
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      // Handle server error or any other errors
+      console.error('Error processing payment:', error);
+
+      // Handle error logic here, e.g., show an error message
+      setErrorMsg('An error occurred while processing your payment.');
+      setShowErrorBookModal(true);
+      setTimeout(()=>{
+        setShowErrorBookModal(false);
+      },3000)
+    }
+  };
+
   return (
     <div>
-      <nav>
-        <div className={style["container"]}>
-          <div className={style["nav__content"]}>
-            <div className={style["nav__right"]}>
-              <div className={style["nav__logo"]}>
-                <img src={logo} alt="logo" />
-              </div>
-              <div className={style["nav__search"]}>
-                <input type="text" placeholder="Tour name or location..." />
-              </div>
-              <ul className={style["nav__links"]}>
-                <li><a>Home</a></li>
-                <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                </li>
-                <li><a href="#">Our Mission</a></li>
-                <li><a href="#">Contact Us</a></li>
-              </ul>
-            </div>
-            <div className={style["menu"]}>
-              <i onClick={() => {
-                if (menu == false) {
-                  setMenu(true)
-                  console.log(true)
-                }
-                else {
-                  setMenu(false)
-                  console.log(false)
-                }
+      {
+        showSuccessBookModal && <SuccessandErrorModals success={true} message={"Tour booked successfully"} />
+      }
+      {
+        showErrorBookModal && <SuccessandErrorModals success={false} message={showErrorMsg} />
+      }
+      <Navbar />
 
-              }} className="fas fa-bars" />
-              {
-                menu == true &&
-                <div className={style["drobdown"]}>
-                  <ul className={style["nav__link"]} id="drobDown">
-                    <li><a href="#">Home</a></li>
-                    <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                    </li>
-                    <li><a href="#">Our Mission</a></li>
-                    <li><a href="#">Contact Us</a></li>
-                  </ul>
-                </div>
-              }
-            </div>
-            <div className={style["nav__left"]}>
-              <div className={style["nav__langs"]}>
-                {
-                  lang == "english" &&
-                  <a><img src={United_Kingdom} alt='' /> English</a>
-                }
-                {
-                  lang == "arabic" &&
-                  <a href="#"><img src={egypt} alt='' /> العربية</a>
-                }
-                {
-                  lang == "italiano" &&
-                  <a href="#"><img src={United_Kingdom} alt='' /> Italiano</a>
-                }
-                <ul>
-                  <li onClick={() => {
-                    setLang("english")
-                  }}><a href="#"><img src={United_Kingdom} alt='' /> English</a></li>
-                  <li onClick={() => {
-                    setLang("arabic")
-                  }}><a href="#"><img src={egypt} alt='' /> العربية</a></li>
-                  <li onClick={() => {
-                    setLang("italiano")
-                  }}><a href="#"><img src={United_Kingdom} alt='' /> Italiano</a></li>
-                </ul>
-              </div>
-              <div className={style["nav__join"]}>
-                <a href="#">Join Us Now</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-      <div className={style["path"]}>
-        <div className={style["container"]}>
-          <div className={style["path__content"]}>
-            <h3>Home</h3>
-            <img src={Vector1} />
-            <h3>Tours</h3>
-            <img src={Vector1} />
-            <h3>{tour?.title}</h3>
-          </div>
-        </div>
-      </div>
       <div className={style["hero"]}>
         <div className={style["container"]}>
           <div className={style["hero__content"]}>
-            <div className={style["overlay"]} />
-            {
-              tour?.img && <img src={`http://localhost:5000/${tour?.img[0]}`} />
+            <div className={style["overlay"]} />{
+              tour?.img?.length > 0 &&
+              <img src={`http://localhost:5000/${tour?.img[0]}`} />
             }
             <div className={style["hero__icons"]}>
               <img src={vecto2} />
@@ -195,18 +260,19 @@ function TourDetails() {
               <h2>{tour?.title}</h2>
               <div className={style["stars"]}>
                 {starIcons}
-                {/* <img src={star} />
-
-                  <img src={star} />
-                  <img src={star} />
-                  <img src={star} />
-                  <img src={star} /> */}
                 <h5>({(tour?.avgRate?.toFixed(1))})</h5>
               </div>
             </div>
           </div>
         </div>
       </div>
+      {
+        isLive &&
+        <div style={{ marginTop: '50px', marginBottom: '20px' }}>
+          <StreamingSection />
+        </div>
+      }
+
       <div className={style["details"]}>
         <div className={style["container"]}>
           <div className={style["details__content"]}>
@@ -237,37 +303,29 @@ function TourDetails() {
                       <a><img src={icon} /> {tour?.address}</a>
                       <a><img src={icon1} /> {tour?.hours} hours</a>
                       {
-                        tour?.arabicTourGuide &&
+                        tour?.arabicCameraOperator &&
                         <a><img src={LR} /> Arabic</a>
                       }
                       {
-                        tour?.englishTourGuide &&
+                        tour?.englishCameraOperator &&
                         <a><img src={UK} /> English</a>
                       }
                       {
-                        tour?.italianTourGuide &&
+                        tour?.italianCameraOperator &&
                         <a><img src={UK} /> Italian</a>
                       }
                     </div>
-                    <p>{tour?.description ? tour?.description : "there's no description for this tour"}</p>
-                    {/* <p>Come join us as we take a ride through the desert around the Giza platue, taking in the last of the seven wonders of the world.</p>
-                  <p>We will get up close to the great pyramids as I take you back to the time of the builder and the pharaohs who commissioned them.</p>
-                  <p>We will start off by taking a look the great sphinx before mounting our camel and riding up the giant causeway making our way round the great pyramids out to one of the most iconic views on earth!</p> */}
+                    <p>{tour?.description ? tour?.description : "There's no description for this tour"}</p>
                     <div className={style["tags"]}>
-                      {/* <a>Egypt</a>
-                    <a>Pyramids</a>
-                    <a>Giza</a>
-                    <a>History</a>
-                    <a>Educational</a>
-                    <a>Tourism</a> */}
+
                       {tour?.tags && tour?.tags.map((tag, index) => (
                         <a key={index}>{tag}</a>
                       ))}
                     </div>
-                    <div className={style["media"]}>
-                      {
-                        tour?.img && <img src={`http://localhost:5000/${tour?.img[1]}`} />
-                      }
+                    <div className={style["media"]}>{
+                      tour?.img?.length > 0 &&
+                      <img src={`http://localhost:5000/${tour?.img[1]}`} />
+                    }
                     </div>
                   </div>
                 </>
@@ -334,8 +392,6 @@ function TourDetails() {
                   </div>
                 )
               }
-
-
               {
                 tap === "similar" &&
                 (
@@ -343,32 +399,19 @@ function TourDetails() {
                     <div className={style["main-conten"]}>
                       {
                         tour?.category === "public" &&
-                        publicTours
-                          .filter((item) => item._id !== tour?._id) // Assuming currentTourId holds the ID of the tour you want to remove
-                          .slice(0, 16)
-                          .map((item) => {
-                            return <Card key={item._id} data={item} />;
-                          })
+                        publicTours.slice(0, 16).map((item) => {
+                          return <Card key={item._id} data={item} />
+                        })
                       }
                       {
-                        tour?.category === "vip" &&
-                        publicTours
-                          .filter((item) => item._id !== tour?._id) // Assuming currentTourId holds the ID of the tour you want to remove
-                          .slice(0, 16)
-                          .map((item) => {
-                            return <Card key={item._id} data={item} />;
-                          })
+                        tour?.category === "VIP" &&
+                        vip.slice(0, 16).map((item) => {
+                          return <Card key={item._id} data={item} />
+                        })
                       }
-
-
-
-
-
-
                     </div>
                   </>
                 )
-
               }
             </div>
 
@@ -376,16 +419,11 @@ function TourDetails() {
               tap != "similar" &&
               <>
                 <div className={style["details__book"]}>
-                  <form>
-                    {/* <label>Select Date</label> */}
-                    {/* <input type="date" /> */}
-                    {/* <label>Select Time</label> */}
-                    {/* <input step={1800} type="time" ng-model="endTime" pattern="[0-9]*" defaultValue="04:00" /> */}
+                  <form className={style['booking__form__style']}>
                     <label>Select Language</label>
                     <div className={style["select"]}>
                       <select onChange={(e) => {
                         setBookedLang(e.target.value)
-                        console.log(e.target.value)
                       }} defaultValue={0}>
                         <option disabled value={0}>select Language</option>
                         {language.map((l) => {
@@ -397,7 +435,6 @@ function TourDetails() {
                     <div className={style["select"]}>
                       <select onChange={(e) => {
                         setBookedHours(e.target.value)
-                        console.log(e.target.value)
                       }} defaultValue={0}>
                         <option value={0} disabled>Select hours</option>
                         {[...hour].reverse().map((h) => (
@@ -412,9 +449,8 @@ function TourDetails() {
                     <div className={style["select"]}>
                       <select onChange={(e) => {
                         setBookedNumber(e.target.value)
-                        console.log(e.target.value)
                       }} defaultValue={0}>
-                        <option disabled value={0}>select Number of Guists</option>
+                        <option disabled value={0}>select Number of Geusts</option>
                         <option value={1}>1 Gusts</option>
                         <option value={2}>2 Gusts</option>
                         <option value={4}>4 Gusts</option>
@@ -436,6 +472,26 @@ function TourDetails() {
                         <option value={20}>20 Gusts</option>
                       </select>
                     </div>
+                    <div style={{marginTop: '40px', marginBottom: '20px'}}>
+                    <CardElement
+                      options={{
+                        hidePostalCode: true,
+                        style: {
+                          base: {
+                            zIndex: '999',
+                            fontSize: '20px',
+                            color: '#424770',
+                            '::placeholder': {
+                              color: '#aab7c4',
+                            },
+                          },
+                          invalid: {
+                            color: '#9e2146',
+                          },
+                        },
+                      }}
+                    />
+                    </div>
                     <div className={style["price"]}>
 
                       <h4>Total</h4>
@@ -443,98 +499,130 @@ function TourDetails() {
                         bookedHours && !bookedNumber ? tour?.price * bookedHours : !bookedHours && bookedNumber ?
                           tour?.price * bookedNumber : tour?.price}$</h4>
                     </div>
-                    <button onClick={(e) => {
-                      e.preventDefault()
-                      axios.post("http://localhost:5000/user/bookTour", {
-                        user: JSON.parse(localStorage.getItem("id")),
-                        tour: tour._id,
-                        hours: bookedHours,
-                        language: bookedLang,
-                        num: bookedNumber,
-                        price: bookedHours * bookedNumber * tour?.price
-                      })
-                    }} type="submit">Book Now</button>
+                    <button
+                      onClick={handleSubmit}
+                      type="submit"
+                      disabled={isBookingDisabled}
+                    >
+                      Book Now
+                    </button>
                   </form>
                   <div className={style["by"]}>
                     {
                       bookedLang === "Arabic" &&
                       <>
                         <h4>This tour by</h4>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.arabicTourGuide.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.arabicTourGuide.name}</h3>
-                            <h5>Tour Guide</h5>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.arabicTourGuide?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.arabicTourGuide?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.arabicTourGuide.name}</h3>
+                              <h5>Tour Guide</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.arabicCameraOperator.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.arabicCameraOperator.name}</h3>
-                            <h5>Camera Operator</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.arabicTourGuide?._id}/cameraOperator`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.arabicCameraOperator?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.arabicCameraOperator.name}</h3>
+                              <h5>Camera Operator</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.arabicDirector.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.arabicDirector.name}</h3>
-                            <h5>Director</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.arabicDirector?._id}/director`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.arabicDirector?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.arabicDirector.name}</h3>
+                              <h5>Director</h5>
+                            </div>
                           </div>
-                        </div>
+                        </NavLink>
                       </>
                     }
                     {
                       bookedLang === "English" &&
                       <>
                         <h4>This tour by</h4>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.englishTourGuide.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.englishTourGuide.name}</h3>
-                            <h5>Tour Guide</h5>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.englishTourGuide?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.englishTourGuide?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.englishTourGuide.name}</h3>
+                              <h5>Tour Guide</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.englishCameraOperator.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.englishCameraOperator.name}</h3>
-                            <h5>Camera Operator</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.englishCameraOperator?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.englishCameraOperator?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.englishCameraOperator.name}</h3>
+                              <h5>Camera Operator</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.englishDirector.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.englishDirector.name}</h3>
-                            <h5>Director</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.englishDirector?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.englishDirector?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.englishDirector.name}</h3>
+                              <h5>Director</h5>
+                            </div>
                           </div>
-                        </div>
+                        </NavLink>
                       </>
                     }
                     {
                       bookedLang === "Italian" &&
                       <>
                         <h4>This tour by</h4>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.italianTourGuide.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.italianTourGuide.name}</h3>
-                            <h5>Tour Guide</h5>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.italianTourGuide?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.italianTourGuide?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.italianTourGuide.name}</h3>
+                              <h5>Tour Guide</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.italianCameraOperator.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.italianCameraOperator.name}</h3>
-                            <h5>Camera Operator</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.italianCameraOperator?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.italianCameraOperator?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.italianCameraOperator.name}</h3>
+                              <h5>Camera Operator</h5>
+                            </div>
                           </div>
-                        </div>
-                        <div className={style["person"]}>
-                          <img src={`http://localhost:5000/${tour?.italianDirector.img}`} alt="avatar" />
-                          <div className={style["text"]}>
-                            <h3>{tour?.italianDirector.name}</h3>
-                            <h5>Director</h5>
+                        </NavLink>
+                        <NavLink
+                          to={`/viewtechnical/${tour?.italianDirector?._id}/tourGuide`}
+                        >
+                          <div className={style["person"]}>
+                            <img src={`http://localhost:5000/${tour?.italianDirector?.img}`} alt="avatar" />
+                            <div className={style["text"]}>
+                              <h3>{tour?.italianDirector.name}</h3>
+                              <h5>Director</h5>
+                            </div>
                           </div>
-                        </div>
+                        </NavLink>
                       </>
                     }
 
@@ -545,6 +633,7 @@ function TourDetails() {
           </div>
         </div>
       </div>
+
       <footer>
         <div className={style["container"]}>
           <div className={style["footer__content"]}>

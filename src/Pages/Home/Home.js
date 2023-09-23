@@ -8,7 +8,8 @@ import egypt from "../../assets/Egypt (EG).png"
 import video from "../../assets/video.png"
 import chatBox from "../../assets/Frame 39479.png"
 import chatIcon from "../../assets/chat.svg"
-import Map from "../../assets/Map.png"
+import Mapp from "../../assets/Map.png"
+import Map from './Map'
 import Search from "../../assets/Search.png"
 import LocationOne from "../../assets/Doctor.svg"
 import LocationTwo from "../../assets/Doctor.svg"
@@ -37,18 +38,56 @@ import LiveToursCard from './LiveToursCard'
 import PopularToursCard from './PopularToursCards'
 import ReviewCard from './ReviewCard'
 import { NavLink } from 'react-router-dom';
-import ChatbotEmbed from '../ChatBot/ChatbotEmbed'
+import axios from 'axios'
+import { Reviews } from '@mui/icons-material'
+import Navbar from '../Navbar/Navbar'
 
 
 function Home() {
     const [menu, setMenu] = useState(false)
     const [lang, setLang] = useState("english")
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [tours, setTours] = useState([])
+    const [filteredTours, setFilteredTours] = useState([])
+    const [travelers, setTravelers] = useState(0)
+    const [publicTours, setPublicTours] = useState(0)
+    const [vip, setVip] = useState(0)
+    const [popularTours, setPopularTours] = useState([])
+    const [popularReviews, setPopularReviews] = useState([])
+    const [liveTours, setLiveTours] = useState([])
+    const [subscribe, setSubscribe] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+
 
     const toggleChat = () => {
         setIsChatOpen(!isChatOpen);
     };
 
+    useEffect(() => {
+        axios.get("http://localhost:5000/admin//allTours").then((res) => {
+            setTours(res.data.data)
+            setFilteredTours(res.data.data)
+        })
+        axios.get("http://localhost:5000/user/allTravelers").then((res) => {
+            setTravelers(res.data.travelers)
+        })
+        axios.get("http://localhost:5000/user/public").then((res) => {
+            setPublicTours(res.data.length)
+        })
+        axios.get("http://localhost:5000/user/vip").then((res) => {
+            setVip(res.data.length)
+        })
+        axios.get("http://localhost:5000/user/popularTours").then((res) => {
+            setPopularTours(res.data)
+        })
+        axios.get("http://localhost:5000/user/popularReviews").then((res) => {
+            setPopularReviews(res.data)
+        })
+        axios.get("http://localhost:5000/user/liveTours").then((res) => {
+            setLiveTours(res.data.data)
+        })
+    }, []);
 
     const responsive = {
         superLargeDesktop: {
@@ -70,88 +109,35 @@ function Home() {
         }
     };
 
+    function search(text) {
+        console.log(text)
+        const x = tours.filter((tour) => {
+            console.log(tour.address)
+            return tour.address.toLowerCase().includes(text.toLowerCase())
+        })
+        setFilteredTours(x)
+    }
+
+    function subscribeToNewsletter() {
+        axios.post("http://localhost:5000/subscribe", {
+            email: subscribe
+        }).then((res) => {
+            console.log(res.data)
+            if (res.data.status === 200) {
+                console.log("send successfully")
+            }
+            else if (res.data.status === 400) {
+                console.log("Error")
+            }
+        })
+    }
 
     return (
         <>
 
             {/*------------------------Navbar Section-----------------------*/}
 
-            <nav>
-                <div className={style["container"]}>
-                    <div className={style["nav__content"]}>
-                        <div className={style["nav__right"]}>
-                            <div className={style["nav__logo"]}>
-                                <img src={logo} alt="logo" />
-                            </div>
-                            <div className={style["nav__search"]}>
-                                <input type="text" placeholder="Tour name or location..." />
-                            </div>
-                            <ul className={style["nav__links"]}>
-                                <li><a>Home</a></li>
-                                <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                                </li>
-                                <li><a href="#">Our Mission</a></li>
-                                <li><a href="#">Contact Us</a></li>
-                            </ul>
-                        </div>
-                        <div className={style["menu"]}>
-                            <i onClick={() => {
-                                if (menu == false) {
-                                    setMenu(true)
-                                    console.log(true)
-                                }
-                                else {
-                                    setMenu(false)
-                                    console.log(false)
-                                }
-
-                            }} className="fas fa-bars" />
-                            {
-                                menu == true &&
-                                <div className={style["drobdown"]}>
-                                    <ul className={style["nav__link"]} id="drobDown">
-                                        <li><a href="#">Home</a></li>
-                                        <li className={style["active"]}><a>Tours <img src={Vector} alt='' /></a>
-                                        </li>
-                                        <li><a href="#">Our Mission</a></li>
-                                        <li><a href="#">Contact Us</a></li>
-                                    </ul>
-                                </div>
-                            }
-                        </div>
-                        <div className={style["nav__left"]}>
-                            <div className={style["nav__langs"]}>
-                                {
-                                    lang == "english" &&
-                                    <a><img src={United_Kingdom} alt='' /> English</a>
-                                }
-                                {
-                                    lang == "arabic" &&
-                                    <a href="#"><img src={egypt} alt='' /> العربية</a>
-                                }
-                                {
-                                    lang == "italiano" &&
-                                    <a href="#"><img src={United_Kingdom} alt='' /> Italiano</a>
-                                }
-                                <ul>
-                                    <li onClick={() => {
-                                        setLang("english")
-                                    }}><a href="#"><img src={United_Kingdom} alt='' /> English</a></li>
-                                    <li onClick={() => {
-                                        setLang("arabic")
-                                    }}><a href="#"><img src={egypt} alt='' /> العربية</a></li>
-                                    <li onClick={() => {
-                                        setLang("italiano")
-                                    }}><a href="#"><img src={United_Kingdom} alt='' /> Italiano</a></li>
-                                </ul>
-                            </div>
-                            <div className={style["nav__join"]}>
-                                <a href="#">Join Us Now</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+            <Navbar />
 
             {/*------------------------Hero Banner Section------------------*/}
             <section className={style["hero__banner__section"]}>
@@ -163,7 +149,9 @@ function Home() {
                                 nullam neque ultrices.</p>
                             <div className={style["hero__banner__buttons"]}>
                                 <NavLink to={"/tours"}><button className={style["find__tour__btn"]}>Find A Tour</button></NavLink>
-                                <button className={style["join__us__btn"]}>Work With Us</button>
+                                <NavLink to={"/login"}><button className={style["join__us__btn"]}>Work With Us</button></NavLink>
+
+
                             </div>
                         </div>
                         <div className={style["hero__banner__video"]}>
@@ -172,38 +160,7 @@ function Home() {
                             </figure>
                         </div>
                     </div>
-                    <div className={style["chat__preview"]} id="chatPreview" style={{ display: isChatOpen ? "block" : "none" }}>
-                        <div className={style["chat__box"]}>
-                            {/* <div className={style["chat__header"]}>
-                                <div className={style["header__content"]}>
-                                    <div className={style["header__name__img"]}>
-                                        <img src={ChatBot} alt="" />
-                                        <div className={style["chat__bot__name"]}>
-                                            <h3>Amanda Jack</h3>
-                                            <h5>LVW Team</h5>
-                                        </div>
-                                    </div>
-                                    <i className={style["fa-solid fa-xmark"]} style={{ color: '#000000' }} />
-                                </div>
-                            </div> */}
-                            <ChatbotEmbed />
-                            {/* <div className={style["chat__body"]}>
-                                <div className={style["start__left__side"]}>
-                                    <p>Welcome to LVW</p>
-                                </div>
-                                <div className={style["start__left__side"]}>
-                                    <p>Can you tell me where you want to go?</p>
-                                </div>
-                                <div className={style["right__side"]}>
-                                    <p>I want to go to France</p>
-                                </div>
-                            </div>
-                            <div className={style["write__message__box"]}>
-                                <textarea placeholder="Write your message..." rows={5} cols={10} defaultValue={""} />
-                                <img src={SendIcon} alt="" className={style["send__icon"]} />
-                            </div> */}
-                        </div>
-                    </div>
+                    {/* <EchatBot /> */}
                 </div>
             </section>
 
@@ -212,21 +169,21 @@ function Home() {
                 <div className={style["container"]}>
                     <div className={style["counter__content"]}>
                         <div className={style["counter__content__box"]}>
-                            <h2>32K<span>+</span></h2>
+                            <h2>{travelers}<span>+</span></h2>
                             <p>Virtual Travelers</p>
                         </div>
                         <div className={style["counter__content__box"]}>
-                            <h2>87K<span>+</span></h2>
+                            <h2>{publicTours}<span>+</span></h2>
                             <p>Public Tour</p>
                         </div>
                         <div className={style["counter__content__box"]}>
-                            <h2>125K<span>+</span></h2>
+                            <h2>{vip}<span>+</span></h2>
                             <p>Private Tour</p>
                         </div>
                     </div>
-                    <div className={style["chat__icon"]} id="chatIcon" >
+                    {/* <div className={style["chat__icon"]} id="chatIcon" >
                         <img src={chatIcon} alt="" onClick={toggleChat} />
-                    </div>
+                    </div> */}
                 </div>
             </section>
 
@@ -234,20 +191,10 @@ function Home() {
             <section className={style["map__section"]}>
                 <div className={style["container"]}>
                     <h2>Find your tour on the map</h2>
-                    <div className={style["map__img"]}>
-                        <img src={Map} alt="" />
-                    </div>
+                    <Map tours={filteredTours} />
                     <div className={style["map__search__bar"]}>
                         <img src={Search} alt="" className={style["map__search__icon"]} />
-                        <input className={style["search"]} type="search" placeholder="Location..." />
-                    </div>
-                    <img src={LocationOne} alt="" className={style["location__one"]} />
-                    <img src={LocationTwo} alt="" className={style["location__two"]} />
-                    <img src={LocationThree} alt="" className={style["location__three"]} />
-                    <div className={style["map__bottom__icons"]}>
-                        <img src={BtnOne} alt="" className={style["cursor__pointer__icon"]} />
-                        <img src={BtnTwo} alt="" className={style["cursor__pointer__icon"]} />
-                        <img src={BtnThree} alt="" className={style["cursor__pointer__icon"]} />
+                        <input onChange={(e) => { search(e.target.value) }} className={style["search"]} type="search" placeholder="Location..." />
                     </div>
                 </div>
             </section>
@@ -257,13 +204,11 @@ function Home() {
                 <div className={style["container"]}>
                     <h2>Live tours to join now</h2>
                     <Carousel responsive={responsive}>
-                        <LiveToursCard />
-                        <LiveToursCard />
-                        <LiveToursCard />
-                        <LiveToursCard />
-                        <LiveToursCard />
-                        <LiveToursCard />
-
+                        {
+                            liveTours?.map((tour) => {
+                                return <LiveToursCard key={tour._id} data={tour} />
+                            })
+                        }
                     </Carousel>
                 </div>
             </section>
@@ -273,13 +218,11 @@ function Home() {
                 <div className={style["container"]}>
                     <h2>Popular tour to book</h2>
                     <Carousel responsive={responsive}>
-                        <PopularToursCard />
-                        <PopularToursCard />
-                        <PopularToursCard />
-                        <PopularToursCard />
-                        <PopularToursCard />
-                        <PopularToursCard />
-
+                        {
+                            popularTours?.map((tour) => {
+                                return <PopularToursCard key={tour._id} data={tour} />
+                            })
+                        }
                     </Carousel>
                 </div>
             </section >
@@ -291,16 +234,22 @@ function Home() {
                     <h2>Popular topics</h2>
                     <div className={style["popular__topics"]}>
                         <div className={style["popular__topics__item"]}>
-                            <img src={Education} alt="" />
-                            <h3 className={style["education__text"]}>Education</h3>
+                            <NavLink to="/tourtype/education">
+                                <img src={Education} alt="" />
+                                <h3 className={style["education__text"]}>Education</h3>
+                            </NavLink>
                         </div>
                         <div className={style["popular__topics__item"]}>
-                            <img src={Shopping} alt="" />
-                            <h3 className={style["shopping__text"]}>Shoping</h3>
+                            <NavLink to="/tourtype/shopping">
+                                <img src={Shopping} alt="" />
+                                <h3 className={style["shopping__text"]}>Shoping</h3>
+                            </NavLink>
                         </div>
                         <div className={style["popular__topics__item"]}>
-                            <img src={Tourism} alt="" />
-                            <h3 className={style["tourism__text"]}>Tourism</h3>
+                            <NavLink to="/tourtype/tourism">
+                                <img src={Tourism} alt="" />
+                                <h3 className={style["tourism__text"]}>Tourism</h3>
+                            </NavLink>
                         </div>
                     </div>
                 </div>
@@ -311,13 +260,11 @@ function Home() {
                 <div className={style["container"]}>
                     <h2>What our travelers say</h2>
                     <Carousel responsive={responsive}>
-                        <ReviewCard />
-                        <ReviewCard />
-                        <ReviewCard />
-                        <ReviewCard />
-                        <ReviewCard />
-                        <ReviewCard />
-                        
+                        {
+                            popularReviews?.map((Review) => {
+                                return <ReviewCard key={Review._id} data={Review} />
+                            })
+                        }
                     </Carousel>
                 </div>
             </section>
@@ -329,8 +276,14 @@ function Home() {
                         <div className={style["email__newsletter__text"]}>
                             <h2>Join our email newsletter to keep updated about new tours</h2>
                             <div className={style["email__input__and__btn"]}>
-                                <input type="email" placeholder="example@mail.com" className={style["email__input"]} />
-                                <button className={style["subscribe__btn"]}>Subscribe</button>
+                                <input
+                                    type="email"
+                                    placeholder="example@mail.com"
+                                    className={style["email__input"]}
+                                    value={subscribe}
+                                    onChange={(e) => setSubscribe(e.target.value)}
+                                />
+                                <button onClick={subscribeToNewsletter} className={style["subscribe__btn"]}>Subscribe</button>
                             </div>
                             <div className={style["icon__text__newsletter"]}>
                                 <i className={style["bx bxs-check-circle"]} style={{ color: '#ffffff' }} />
