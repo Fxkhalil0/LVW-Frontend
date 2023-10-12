@@ -1,12 +1,20 @@
-import React from 'react'
+import React, {useState, useEffect} from 'react'
 import style from './StreamingSection.module.css'
 import Avatar from '../../assets/avatar.png'
 import LiveImage from '../../assets/live/image 5.png'
 import Watch from '../../assets/live/icons.svg'
 import Send from '../../assets/live/Send.svg'
-
+import axios from 'axios'
 
 function StreamingSection() {
+    const [liveTours, setLiveTours] = useState([])
+    useEffect(() => {
+        axios.get("http://localhost:5000/user/liveTours").then((res) => {
+            setLiveTours(res.data.data)
+            console.log(res.data.data)
+        })
+    }, []);
+
     return (
         <secrtion className={style["live__section"]}>
             <div className={style["container"]}>
@@ -15,7 +23,9 @@ function StreamingSection() {
                         <div className={style["live__video"]}>
                             <img src={LiveImage} alt="" />
                             <div className={style["video__top__buttons"]}>
-                                <button className={style["public__btn"]}>Public</button>
+                                <button className={style["public__btn"]}>
+                                {liveTours[0]?.category === 'public' ? 'Public' : (liveTours[0]?.category === 'VIP' ? 'VIP' : (liveTours[0]?.category === 'free' ? 'Free' : ''))}
+                                    </button>
                                 <button className={style["live__now__btn"]}>Live Now</button>
                                 <div className={style["video__views"]}>
                                     <p>120</p>
@@ -31,12 +41,14 @@ function StreamingSection() {
                         </div>
                         <div className={style["video__details"]}>
                             <div className={style["video__title"]}>
-                                <h4>Explore the pyramid from inside</h4>
-                                <p>Cairo, Egypt</p>
+                                <h4>{liveTours[0]?.title}</h4>
+                                <p>{liveTours[0]?.city}, {liveTours[0]?.address}</p>
                             </div>
                             <div className={style["title__buttons"]}>
                                 <button className={style["guests__btn"]}>10</button>
-                                <button className={style["title__btn"]}>Send Trip</button>
+                                <button className={style["title__btn"]}>
+                                {liveTours[0]?.tourType === 'tourism' ? 'Tourism' : (liveTours[0]?.tourType === 'shopping' ? 'Shopping' : (liveTours[0]?.tourType === 'education' ? 'Education' : ''))}
+                                    </button>
                             </div>
                         </div>
                     </div>

@@ -43,6 +43,7 @@ import { Reviews } from '@mui/icons-material'
 import Navbar from '../Navbar/Navbar'
 
 
+
 function Home() {
     const [menu, setMenu] = useState(false)
     const [lang, setLang] = useState("english")
@@ -231,7 +232,7 @@ function Home() {
             {/*------------------------Popular Topics Section-----------------*/}
             < section className={style["popular__topics__section"]} >
                 <div className={style["container"]}>
-                    <h2>Popular topics</h2>
+                    <h2>Our Services</h2>
                     <div className={style["popular__topics"]}>
                         <div className={style["popular__topics__item"]}>
                             <NavLink to="/tourtype/education">
@@ -242,7 +243,7 @@ function Home() {
                         <div className={style["popular__topics__item"]}>
                             <NavLink to="/tourtype/shopping">
                                 <img src={Shopping} alt="" />
-                                <h3 className={style["shopping__text"]}>Shoping</h3>
+                                <h3 className={style["shopping__text"]}>Shopping</h3>
                             </NavLink>
                         </div>
                         <div className={style["popular__topics__item"]}>
