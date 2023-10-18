@@ -54,6 +54,7 @@ function TourDetails() {
   const [liveTourId, setLiveTourId] = useState([]);
   const [isBookingDisabled, setIsBookingDisabled] = useState(false);
   const [showRolesModal, setShowRolesModal] = useState(false);
+  const [tourBookingData, setTourBookingData] = useState(false)
   //UserData
   const [userData, setUserData] = useState("")
   const [showCoverModal, setShowCoverModal] = useState(false);
@@ -122,33 +123,50 @@ function TourDetails() {
     setLanguage(updatedLanguages)
   }
   useEffect(() => {
-
     if (location.state) {
       axios.get("http://localhost:5000/user/oneTour", { params: { id: location.state } }).then((res) => {
         setTour(res.data)
         hours(res.data.hours)
         languages(res.data)
-        console.log(res.data)
+        axios.get("http://localhost:5000/user/getTourBooks", { params: { id: res.data._id } }).then((bookres) => {
+          if (bookres.data.tour == "free") {
+            setTourBookingData(true)
+          } else {
+            for (let i = 0; i < bookres.data.length; i++) {
+              if (bookres.data[i].user == JSON.parse(localStorage.getItem("id"))) {
+                setTourBookingData(true)
+              }
+            }
+          }
+        })
       })
     } else if (num) {
       axios.get("http://localhost:5000/user/oneTour", { params: { id: num } }).then((res) => {
         setTour(res.data)
         hours(res.data.hours)
         languages(res.data)
+        axios.get("http://localhost:5000/user/getTourBooks", { params: { id: res.data._id } }).then((bookres) => {
+          if (bookres.data.tour == "free") {
+            setTourBookingData(true)
+          } else {
+            for (let i = 0; i < bookres.data.length; i++) {
+              if (bookres.data[i].user == JSON.parse(localStorage.getItem("id"))) {
+                setTourBookingData(true)
+              }
+            }
+          }
+        })
       })
     }
     axios.get("http://localhost:5000/user/public").then((res) => {
       setPublicTours(res.data)
     })
-
-
     axios.get("http://localhost:5000/user/vip").then((res) => {
       setVip(res.data)
     })
     axios.get("http://localhost:5000/user/free").then((res) => {
       setFree(res.data)
     })
-
     axios.get("http://localhost:5000/user/liveTours").then((res) => {
       for (let i = 0; i < res.data.data.length; i++) {
         if (res.data.data[i]._id === tour?._id) {
@@ -181,12 +199,6 @@ function TourDetails() {
       setIsLive(false);
     }
   }, [liveTourId, tour]);
-
-  // useEffect(() => {
-  //   if (tour?.img && tour.img.length > 0) {
-  //     setAllMediaPreviews(tour.img.map(image => `http://localhost:5000/${image}`));
-  //   }
-  // }, [tour]);
 
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
   const [editedInstructions, setEditedInstructions] = useState(
@@ -268,6 +280,7 @@ function TourDetails() {
               setIsBookingDisabled(true); // Disable the button
               setTimeout(() => {
                 setShowSuccessBookModal(false);
+                window.location.reload();
               }, 3000);
             } else if (response.status === 500) {
               setShowErrorBookModal(true);
@@ -847,12 +860,12 @@ function TourDetails() {
         </div>
       </div>
       {
-        isLive &&
-        <div style={{ marginTop: '50px', marginBottom: '20px' }}>
-          <StreamingSection />
-        </div>
+        isLive && tourBookingData && (
+          <div style={{ marginTop: '50px', marginBottom: '20px' }}>
+            <StreamingSection />
+          </div>
+        )
       }
-
       <div className={style["details"]}>
         <div className={style["container"]}>
           <div className={style["details__content"]}>
