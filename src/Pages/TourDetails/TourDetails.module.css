@@ -168,7 +168,7 @@ nav .menu i{
     color: white;
 }
 .path{
-    background-color: rgba(209, 201, 232, 1);
+    background-color: #12243a4d;
 }
 .path__content{
     display: flex;
@@ -187,6 +187,7 @@ nav .menu i{
 .hero__content > img{
     width: 100%;
     height: 250px;
+    object-fit: cover;
 }
 .hero__content .overlay{
     position: absolute;
@@ -209,13 +210,12 @@ nav .menu i{
     margin-left: 8px;
 }
 .hero__text{
-    position: absolute;
     bottom: 10px;
     z-index: 6;
     display: flex;
     justify-content: space-between;
-    width: 90%;
-    left: 5%;
+    width: 100%;
+    left: 0%;
 }
 .hero__text h2{
     font-size: 28px;
@@ -1089,4 +1089,23 @@ footer{
     .details__about .main-conten .card{
         width: 100%;
     }
+}
+
+.find__tour__btn {
+    width: Hug (154px);
+    height: Fixed (56px);
+    padding: 15px 29px 15px 29px;
+    border-radius: 12px;
+    /* background: linear-gradient(90deg, rgba(54, 109, 175, 1) 100%, rgba(65, 138, 226, 1) 100%); */
+    background: #fe2629;
+    border: none;
+    outline: none;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 24px;
+    letter-spacing: 0em;
+    text-align: right;
+    color: rgba(255, 255, 255, 1);
+    cursor: pointer;
+    margin-left: 20px;
 }

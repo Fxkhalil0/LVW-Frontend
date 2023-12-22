@@ -20,7 +20,7 @@ function StreamingSection() {
                 <div className={style["live__section__content"]}>
                     <div className={style["live__section__left"]}>
                         <div className={style["live__video"]}>
-                            <div style={{ width: '100%', height: '0px', position: 'relative', paddingBottom: '56.25%' }}>
+                            {/* <div style={{ width: '100%', height: '0px', position: 'relative', paddingBottom: '56.25%' }}>
                                 <iframe src="https://player.onestream.live/embed?token=MjU1NDI0&type=up"
                                     style={{ position: 'absolute', width: '100%', height: '100%', overflow: 'hidden' , borderRadius: '15px'}}
                                     scrolling="no"
@@ -28,16 +28,17 @@ function StreamingSection() {
                                     allow="autoplay"
                                     allowfullscreen>
                                 </iframe>
-                            </div>
+                            </div> */}
+                            <img src={LiveImage} alt='' />
                             <div className={style["video__top__buttons"]}>
                                 <button className={style["public__btn"]}>
                                     {liveTours[0]?.category === 'public' ? 'Public' : (liveTours[0]?.category === 'VIP' ? 'VIP' : (liveTours[0]?.category === 'free' ? 'Free' : ''))}
                                 </button>
                                 <button className={style["live__now__btn"]}>Live Now</button>
-                                <div className={style["video__views"]}>
+                                {/* <div className={style["video__views"]}>
                                     <p>120</p>
                                     <img src={Watch} alt="" />
-                                </div>
+                                </div> */}
                             </div>
                             {/* <div className={style["video__bottom__buttons"]}>
                                 <img src="./assets/images/live/btn.svg" alt="" />
@@ -60,13 +61,13 @@ function StreamingSection() {
                         </div>
                     </div>
                     <div className={style["live__section__right"]}>
-                    <iframe src="https://chat.onestream.live/embed?token=dW5pdmVyc2FsLWNoYXQtMjU1NDI0"
+                    {/* <iframe src="https://chat.onestream.live/embed?token=dW5pdmVyc2FsLWNoYXQtMjU1NDI0"
                     style={{width:'100%',height:'100%',overflow: 'hidden', borderRadius: '15px'}}
                     scrolling="no" 
                     frameborder="0"
                     allow="autoplay"
-                    allowfullscreen ></iframe>
-                        {/* <div className={style["live__chat__box"]}>
+                    allowfullscreen ></iframe> */}
+                        <div className={style["live__chat__box"]}>
                             <div className={style["chat__header"]}>
                                 <div className={style["chat__manager"]}>
                                     <img src={Avatar} alt="" className={style["avatar1"]} />
@@ -105,7 +106,7 @@ function StreamingSection() {
                                     <img src={Send} alt="" className={style["send__icon"]} />
                                 </div>
                             </div>
-                        </div> */}
+                        </div>
                     </div>
                 </div>
             </div>
